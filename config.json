@@ -2,28 +2,28 @@
     "email_config": {
         "smtp_server": "smtp.qq.com",
         "smtp_port": 465,
-        "sender_email": "1669177253@qq.com",
-        "sender_password": "snncdfyioizibbbd",
-        "receiver_email": "1669177253@qq.com"
+        "sender_email": "发送方",
+        "sender_password": "邮箱授权码",
+        "receiver_email": "接收方"
     },
     "rss_sources": [
         {
             "name": "formnoshape",
-            "url": "http://48.210.34.19:1200/twitter/user/formnoshape",
+            "url": "rss源",
             "interval_minutes": 5,
             "save_dir": "/app/data/formnoshape",
             "txt_dir": "/app/data/txt"
         },
         {
             "name": "dasinong",
-            "url": "http://48.210.34.19:1200/twitter/user/dasinong",
+            "url": "rss源",
             "interval_minutes": 5,
             "save_dir": "/app/data/dasinong",
             "txt_dir": "/app/data/txt"
         },
         {
             "name": "bilibili",
-            "url": "http://48.210.34.19:1200/bilibili/followings/dynamic/430225392",
+            "url": "rss源",
             "interval_minutes": 5,
             "save_dir": "/app/data/bilibili",
             "txt_dir": "/app/data/txt"
