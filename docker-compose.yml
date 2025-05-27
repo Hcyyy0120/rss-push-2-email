@@ -1,0 +1,11 @@
+version: '3'
+services:
+  rsspush2email:
+    build: .
+    container_name: rsspush2email
+    restart: always
+    volumes:
+      - ./data:/app/data
+      - ./config.json:/app/config.json
+    environment:
+      - TZ=Asia/Shanghai 
