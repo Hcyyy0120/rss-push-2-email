@@ -1,4 +1,4 @@
-requests==2.31.0
-feedparser==6.0.10
-python-dateutil==2.8.2
-schedule==1.2.1 
+feedparser>=6.0.0
+requests>=2.25.0
+schedule>=1.0.0
+python-dateutil>=2.8.0 

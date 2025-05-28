@@ -16,11 +16,29 @@
 - 支持命令行参数，灵活运行模式
 - 数据持久化存储，避免重复推送
 - 自动创建数据存储目录
+- 安全处理HTML实体，确保URL正确解析
+
+## 系统要求
+
+- Python 3.6+
+- 网络连接
+- SMTP邮件服务账号
 
 ## 安装依赖
 
+安装所需的Python库：
+
 ```bash
 pip install -r requirements.txt
+```
+
+requirements.txt文件内容：
+
+```
+feedparser>=6.0.0
+requests>=2.25.0
+schedule>=1.0.0
+python-dateutil>=2.8.0
 ```
 
 ## 配置文件
@@ -59,24 +77,24 @@ pip install -r requirements.txt
 ### 配置项说明
 
 #### 邮件配置 (email_config)
-- smtp_server: SMTP服务器地址
-- smtp_port: SMTP服务器端口
-- sender_email: 发件人邮箱
-- sender_password: 发件人密码或授权码
-- receiver_email: 收件人邮箱
+- `smtp_server`: SMTP服务器地址
+- `smtp_port`: SMTP服务器端口
+- `sender_email`: 发件人邮箱
+- `sender_password`: 发件人密码或授权码
+- `receiver_email`: 收件人邮箱
 
 #### RSS源配置 (每项)
-- name: RSS源的唯一标识名
-- url: RSS源的URL地址
-- interval_minutes: 抓取间隔（分钟）
-- save_dir: 数据保存目录（可选，默认为data/源名称）
-- txt_dir: 文本文件保存目录（可选，默认为./rsspush）
-- max_cache_days: 缓存保留天数（可选，默认30天）
-- max_image_size_mb: 单张图片最大大小，单位MB（可选，默认10MB）
-- max_images_per_mail: 每封邮件最大图片数量（可选，默认20张）
+- `name`: RSS源的唯一标识名
+- `url`: RSS源的URL地址
+- `interval_minutes`: 抓取间隔（分钟）
+- `save_dir`: 数据保存目录（可选，默认为data/源名称）
+- `txt_dir`: 文本文件保存目录（可选，默认为./rsspush）
+- `max_cache_days`: 缓存保留天数（可选，默认30天）
+- `max_image_size_mb`: 单张图片最大大小，单位MB（可选，默认10MB）
+- `max_images_per_mail`: 每封邮件最大图片数量（可选，默认20张）
 
 #### 其他配置
-- base_rss_url: 基础URL（可选，用于相对路径的RSS源）
+- `base_rss_url`: 基础URL（可选，用于相对路径的RSS源）
 
 ## 使用方法
 
@@ -104,6 +122,12 @@ python rss_fetcher.py --debug
 python rss_fetcher.py --once
 ```
 
+### 显示版本信息
+
+```bash
+python rss_fetcher.py --version
+```
+
 ## 数据存储
 
 - RSS内容以JSON格式按源名称分目录保存
@@ -114,12 +138,12 @@ python rss_fetcher.py --once
 ## 数据格式
 
 每个JSON文件包含以下字段：
-- title: 文章标题
-- link: 原文链接
-- published: 发布时间
-- description: 文章描述/内容
-- content: 完整内容（如果RSS提供）
-- fetch_time: 抓取时间
+- `title`: 文章标题
+- `link`: 原文链接
+- `published`: 发布时间
+- `description`: 文章描述/内容
+- `content`: 完整内容（如果RSS提供）
+- `fetch_time`: 抓取时间
 
 ## 高级功能
 
@@ -127,6 +151,7 @@ python rss_fetcher.py --once
 - 自动提取RSS内容中的图片，并嵌入到邮件中
 - 检测YouTube、Vimeo等视频链接，提取缩略图
 - 将视频嵌入转换为缩略图+链接形式
+- 安全处理HTML实体编码的图片URL
 
 ### 资源限制
 - 可设置图片大小上限，防止过大图片导致邮件发送失败
@@ -137,13 +162,65 @@ python rss_fetcher.py --once
 - 网络请求、邮件发送等操作自动重试
 - 详细的错误记录，包括堆栈跟踪
 - 配置文件格式严格验证，避免运行时错误
+- 安全处理各种异常情况，保证程序稳定运行
 
 ## 添加新的RSS源
 
 1. 编辑 `config.json` 文件
 2. 在 `rss_sources` 数组中添加新的源配置
-3. 保存文件后重启程序，或者使用 reload_config() 方法动态重载
+3. 保存文件后重启程序，或者使用 `reload_config()` 方法动态重载
 
 ## 日志记录
 
-程序会自动创建带时间戳的日志文件，记录详细的运行信息。同时也会在控制台输出关键信息 
+程序会自动创建带时间戳的日志文件，记录详细的运行信息。同时也会在控制台输出关键信息。
+
+日志文件命名格式：`YYYYMMDD_HHMMSS_rss_fetcher.log`
+
+## 故障排查
+
+常见问题及解决方法：
+
+1. **无法连接到SMTP服务器**
+   - 确认SMTP服务器地址和端口是否正确
+   - 检查网络连接是否正常
+   - 对于一些邮箱服务，可能需要开启"SMTP服务"或生成"应用专用密码"
+
+2. **邮件发送失败**
+   - 检查发件人邮箱和密码是否正确
+   - 确认是否使用了正确的授权方式（密码或授权码）
+   - 查看日志中的详细错误信息
+
+3. **无法获取RSS内容**
+   - 确认RSS源URL是否正确
+   - 验证RSS源是否可以正常访问
+   - 查看日志了解具体错误原因
+
+4. **没有收到新文章通知**
+   - 确认RSS源是否有更新内容
+   - 检查程序是否正常运行
+   - 查看缓存文件是否存在重复GUID问题
+
+5. **图片无法正常显示**
+   - 检查邮件客户端是否允许显示图片
+   - 查看日志确认图片下载是否成功
+   - 确认图片大小是否超过配置限制
+
+## 安全说明
+
+1. 配置文件中含有敏感信息（如邮箱密码），请妥善保管配置文件
+2. 建议使用应用专用密码而非邮箱主密码
+3. 在共享环境中运行时，请确保权限适当设置
+
+## 贡献指南
+
+欢迎提交问题报告、功能请求和代码贡献！
+
+1. Fork本仓库
+2. 创建您的特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交您的更改 (`git commit -m 'Add some amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 打开一个Pull Request
+
+## 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情 
