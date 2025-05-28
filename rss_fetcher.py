@@ -813,11 +813,16 @@ class RSSManager:
                 logger.error(f"配置错误: 'smtp_port' 必须是整数，当前值: {email_config['smtp_port']}")
                 return False
                 
-            # 验证电子邮件格式
-            for email_field in ['sender_email'] + email_config.get('receiver_emails', []):
-                email = email_field
-                if not isinstance(email, str) or '@' not in email or '.' not in email:
-                    logger.error(f"配置错误: '{email_field}' 不是有效的电子邮件地址: {email}")
+            # 校验发件人邮箱
+            sender_email = email_config['sender_email']
+            if not isinstance(sender_email, str) or '@' not in sender_email or '.' not in sender_email:
+                logger.error(f"配置错误: 'sender_email' 不是有效的电子邮件地址: {sender_email}")
+                return False
+            
+            # 校验收件人邮箱列表
+            for recv_email in email_config.get('receiver_emails', []):
+                if not isinstance(recv_email, str) or '@' not in recv_email or '.' not in recv_email:
+                    logger.error(f"配置错误: 'receiver_emails' 中存在无效邮箱: {recv_email}")
                     return False
             
             # 检查RSS源配置
