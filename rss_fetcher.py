@@ -217,7 +217,7 @@ class RSSFetcher:
             return ""
             
         # 替换常见的HTML实体
-        text = html.unescape(text)
+        text = safe_unescape(text)
         
         # 保留换行和段落结构
         text = text.replace('<br>', '\n')
@@ -263,7 +263,7 @@ class RSSFetcher:
                     f.write(f"发布时间: {entry.get('published', '')}\n")
                     f.write(f"作者: {entry.get('author', '')}\n")
                     f.write(f"标题: {entry.get('title', '')}\n")
-                    f.write(f"链接: {entry.get('link', '')}\n")
+                    f.write(f"链接: {safe_unescape(entry.get('link', ''))}\n")
                     
                     # 清理并写入描述
                     description = self.clean_html(entry.get('description', ''))
@@ -282,7 +282,7 @@ class RSSFetcher:
             content.append(f"标题: {entry.get('title', '')}")
             content.append(f"作者: {entry.get('author', '')}")
             content.append(f"发布时间: {entry.get('published', '')}")
-            content.append(f"链接: {entry.get('link', '')}")
+            content.append(f"链接: {safe_unescape(entry.get('link', ''))}")
             content.append("\n内容:")
             content.append(self.clean_html(entry.get('description', '')))
             content.append("\n" + "="*50 + "\n")
@@ -338,7 +338,7 @@ class RSSFetcher:
             title = entry.get('title', '无标题')
             author = entry.get('author', '未知作者')
             published = entry.get('published', '')
-            link = entry.get('link', '')
+            link = safe_unescape(entry.get('link', ''))
             
             html_parts.append(f'<div class="entry">')
             html_parts.append(f'<h2><a href="{link}" target="_blank">{title}</a></h2>')
@@ -476,13 +476,22 @@ class RSSFetcher:
             
             # 添加User-Agent头，减少被拒绝的可能性
             headers = {
-                'User-Agent': 'RSS-Fetcher/1.0 (https://github.com/yourname/rsspush2email)',
+                'User-Agent': 'RSS-Fetcher/1.0 (https://github.com/Hcyyy0120/rss-push-2-email)',
                 'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml'
             }
             
             logger.debug(f"[{self.name}] 正在获取RSS内容: {full_url}")
+            
+            # 确保URL安全
+            full_url = safe_unescape(full_url)
+            
             response = requests.get(full_url, headers=headers, timeout=30)
             response.raise_for_status()  # 抛出HTTP错误，让retry处理
+            
+            # 检查响应内容类型
+            content_type = response.headers.get('Content-Type', '')
+            logger.debug(f"[{self.name}] 响应内容类型: {content_type}")
+            
             feed = feedparser.parse(response.content)
             
             # 检查解析结果是否有效
@@ -493,6 +502,10 @@ class RSSFetcher:
             # 检查feed版本
             if hasattr(feed, 'version') and feed.version:
                 logger.debug(f"[{self.name}] RSS格式版本: {feed.version}")
+                
+            # 检查feed标题
+            if hasattr(feed, 'feed') and hasattr(feed.feed, 'title'):
+                logger.debug(f"[{self.name}] Feed标题: {feed.feed.title}")
             
             # 检查新条目
             new_entries = []
@@ -530,13 +543,13 @@ class RSSFetcher:
                             logger.warning(f"[{self.name}] 解析发布日期失败: {str(e)}")
                     
                     # 使用MD5哈希代替不可靠的hash函数
-                    link = entry.get('link', '')
+                    link = safe_unescape(entry.get('link', ''))
                     hash_str = hashlib.md5(link.encode('utf-8')).hexdigest()[:10]
                     
                     # 准备保存的数据
                     item_data = {
                         'title': entry.get('title', ''),
-                        'link': entry.get('link', ''),
+                        'link': link,
                         'published': entry.get('published', ''),
                         'description': entry.get('description', ''),
                         'content': entry.get('content', [{}])[0].get('value', '') if 'content' in entry else '',
@@ -583,6 +596,9 @@ class RSSFetcher:
         
         results = []
         for i, img_url in enumerate(matches):
+            # 解码HTML实体（关键修改）
+            img_url = safe_unescape(img_url)
+            
             # 处理相对URL
             if img_url.startswith('/') or not (img_url.startswith('http://') or img_url.startswith('https://')):
                 if base_url:
@@ -947,6 +963,38 @@ class RSSManager:
             logger.error(f"运行时出错: {str(e)}")
             self.executor.shutdown(wait=True)
 
+def safe_unescape(url_str):
+    """安全地解码URL字符串，处理可能的HTML实体
+    
+    Args:
+        url_str: 需要解码的URL字符串
+        
+    Returns:
+        解码后的URL字符串
+    """
+    if not url_str:
+        return ''
+    try:
+        return html.unescape(url_str)
+    except Exception as e:
+        logger.warning(f"解码URL失败: {str(e)}, 返回原始URL")
+        return url_str
+
+def setup_signals():
+    """设置信号处理，确保程序能够优雅退出"""
+    import signal
+    import sys
+    
+    def signal_handler(sig, frame):
+        logger.info("\n收到终止信号，正在优雅退出...")
+        # 在这里可以添加资源清理代码
+        sys.exit(0)
+        
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    logger.debug("信号处理器已设置")
+
 def main():
     """主函数"""
     # 解析命令行参数
@@ -955,7 +1003,13 @@ def main():
     parser.add_argument('-c', '--config', default='config.json', help='配置文件路径')
     parser.add_argument('--debug', action='store_true', help='启用调试模式')
     parser.add_argument('--once', action='store_true', help='只获取一次RSS，然后退出')
+    parser.add_argument('--version', action='store_true', help='显示版本信息')
     args = parser.parse_args()
+    
+    # 显示版本信息
+    if args.version:
+        print("RSS推文抓取和邮件推送工具 v1.0.0")
+        return
     
     # 设置调试模式
     if args.debug:
@@ -965,6 +1019,9 @@ def main():
         logger.debug("调试模式已启用")
     
     try:
+        # 设置信号处理
+        setup_signals()
+        
         # 显示启动信息
         logger.info("=" * 50)
         logger.info(" RSS订阅获取和邮件推送工具启动")
@@ -996,6 +1053,7 @@ def main():
                     logger.error(f"RSS获取失败: {name}, 错误: {str(e)}")
                     
             logger.info("所有RSS源获取完成，程序退出")
+            manager.executor.shutdown(wait=True)
         else:
             # 持续监听模式
             manager.run()

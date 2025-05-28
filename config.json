@@ -6,7 +6,7 @@
         "sender_password": "邮箱授权码",
         "receiver_email": "接收方@qq.com"
     },
-    "base_rss_url": "http://13.78.88.171:1200",
+    "base_rss_url": "http://ip:1200",
     "rss_sources": [
         {
             "name": "formnoshape",
