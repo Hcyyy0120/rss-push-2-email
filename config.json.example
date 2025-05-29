@@ -4,7 +4,10 @@
         "smtp_port": 465,
         "sender_email": "发送方@qq.com",
         "sender_password": "邮箱授权码",
-        "receiver_email": "接收方@qq.com"
+        "receiver_emails": [
+            "1@qq.com",
+            "2@qq.com"
+        ]
     },
     "base_rss_url": "http://ip:1200",
     "rss_sources": [

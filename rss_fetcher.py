@@ -107,7 +107,11 @@ class EmailSender:
         self.smtp_port = config['smtp_port']
         self.sender_email = config['sender_email']
         self.sender_password = config['sender_password']
-        self.receiver_email = config['receiver_email']
+        # 支持多个收件人
+        self.receiver_emails = config.get('receiver_emails')
+        if not self.receiver_emails:
+            # 兼容旧配置
+            self.receiver_emails = [config['receiver_email']]
         
     @retry(max_retries=3, delay=5, exceptions=(smtplib.SMTPException, socket.error, TimeoutError))
     def send_email(self, subject: str, content: str, html_content: str = None, images: List[Tuple[str, bytes]] = None):
@@ -123,7 +127,7 @@ class EmailSender:
             # 创建邮件对象
             msg = MIMEMultipart('alternative')
             msg['From'] = self.sender_email
-            msg['To'] = self.receiver_email
+            msg['Bcc'] = ', '.join(self.receiver_emails)  # 密送
             msg['Subject'] = Header(subject, 'utf-8')
             
             # 添加纯文本版本
@@ -148,7 +152,7 @@ class EmailSender:
             server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=30)
             try:
                 server.login(self.sender_email, self.sender_password)
-                server.send_message(msg)
+                server.send_message(msg, from_addr=self.sender_email, to_addrs=self.receiver_emails)
                 # 在发送过程中需要手动调用server.quit()方法关闭会话，否则会报一个错误
                 server.quit()
             except Exception as e:
@@ -797,7 +801,7 @@ class RSSManager:
                 
             email_config = config['email_config']
             required_email_fields = ['smtp_server', 'smtp_port', 'sender_email', 
-                                     'sender_password', 'receiver_email']
+                                     'sender_password', 'receiver_emails']
             
             for field in required_email_fields:
                 if field not in email_config:
@@ -809,11 +813,16 @@ class RSSManager:
                 logger.error(f"配置错误: 'smtp_port' 必须是整数，当前值: {email_config['smtp_port']}")
                 return False
                 
-            # 验证电子邮件格式
-            for email_field in ['sender_email', 'receiver_email']:
-                email = email_config[email_field]
-                if not isinstance(email, str) or '@' not in email or '.' not in email:
-                    logger.error(f"配置错误: '{email_field}' 不是有效的电子邮件地址: {email}")
+            # 校验发件人邮箱
+            sender_email = email_config['sender_email']
+            if not isinstance(sender_email, str) or '@' not in sender_email or '.' not in sender_email:
+                logger.error(f"配置错误: 'sender_email' 不是有效的电子邮件地址: {sender_email}")
+                return False
+            
+            # 校验收件人邮箱列表
+            for recv_email in email_config.get('receiver_emails', []):
+                if not isinstance(recv_email, str) or '@' not in recv_email or '.' not in recv_email:
+                    logger.error(f"配置错误: 'receiver_emails' 中存在无效邮箱: {recv_email}")
                     return False
             
             # 检查RSS源配置
